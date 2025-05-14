@@ -34,6 +34,7 @@ _IS_RAW_CONF = "_is_raw_conf"
 class ComponentParamBase(ABC):
     def __init__(self):
         self.output_var_name = "output"
+        self.infor_var_name = "infor"
         self.message_history_window_size = 22
         self.query = []
         self.inputs = []
@@ -462,11 +463,14 @@ class ComponentBase(ABC):
     def set_output(self, v):
         setattr(self._param, self._param.output_var_name, v)
 
+    def set_infor(self, v):
+        setattr(self._param, self._param.infor_var_name, v)
+        
     def _fetch_outputs_from(self, sources: list[dict[str, Any]]) -> list[pd.DataFrame]:
         outs = []
         for q in sources:
             if q.get("component_id"):
-                if q["component_id"].split("@")[0].lower().find("begin") >= 0:
+                if "@" in q["component_id"] and q["component_id"].split("@")[0].lower().find("begin") >= 0:
                     cpn_id, key = q["component_id"].split("@")
                     for p in self._canvas.get_component(cpn_id)["obj"]._param.query:
                         if p["key"] == key:
@@ -488,7 +492,6 @@ class ComponentBase(ABC):
             elif q.get("value"):
                 outs.append(pd.DataFrame([{"content": q["value"]}]))
         return outs
-
     def get_input(self):
         if self._param.debug_inputs:
             return pd.DataFrame([{"content": v["value"]} for v in self._param.debug_inputs if v.get("value")])

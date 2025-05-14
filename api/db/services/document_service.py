@@ -99,6 +99,42 @@ class DocumentService(CommonService):
 
     @classmethod
     @DB.connection_context()
+    def count_by_kb_id(cls, kb_id, keywords, run_status, types):
+        if keywords:
+            docs = cls.model.select().where(
+                (cls.model.kb_id == kb_id),
+                (fn.LOWER(cls.model.name).contains(keywords.lower()))
+            )
+        else:
+            docs = cls.model.select().where(cls.model.kb_id == kb_id)
+
+        if run_status:
+            docs = docs.where(cls.model.run.in_(run_status))
+        if types:
+            docs = docs.where(cls.model.type.in_(types))
+
+        count = docs.count()
+
+        return count
+
+    @classmethod
+    @DB.connection_context()
+    def get_total_size_by_kb_id(cls, kb_id, keywords="", run_status=[], types=[]):
+        query = cls.model.select(fn.COALESCE(fn.SUM(cls.model.size), 0)).where(
+            cls.model.kb_id == kb_id
+        )
+
+        if keywords:
+            query = query.where(fn.LOWER(cls.model.name).contains(keywords.lower()))
+        if run_status:
+            query = query.where(cls.model.run.in_(run_status))
+        if types:
+            query = query.where(cls.model.type.in_(types))
+
+        return int(query.scalar()) or 0
+
+    @classmethod
+    @DB.connection_context()
     def insert(cls, doc):
         if not cls.save(**doc):
             raise RuntimeError("Database error (Document)!")
@@ -340,6 +376,15 @@ class DocumentService(CommonService):
         if not doc_id:
             return
         return doc_id[0]["id"]
+    
+    @classmethod
+    @DB.connection_context()
+    def get_doc_ids_by_doc_names(cls, doc_names):
+        if not doc_names:
+            return []
+
+        query = cls.model.select(cls.model.id).where(cls.model.name.in_(doc_names))
+        return list(query.scalars().iterator())
 
     @classmethod
     @DB.connection_context()
